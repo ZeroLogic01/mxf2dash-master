@@ -1,0 +1,13 @@
+
+
+
+1)It will continuouly be watching a particular folder, lets call it folder 'X:\', once a file is available it till trigger ffmpeg on the mxf file, pick up a name of the mxf file create directory in folder 'Y:\' and start producing the output of the ffmpeg with the arguments given to this folder.
+
+MUST READ: Application needs to send conversion command with a delay of 5 seconds AFTER it detected file in folder
+
+	E.g.: If file is being recorded as 'X:\ABC.mxf'
+	      Create a new MPEG DASH at Y:\ABC\stream.mpd
+
+2)Ability to minimize the application to the task manager, and let it run in the background 
+
+3)Ability to control the number of concurrent ffmpeg sessions and doing load balancing to different machines. So if you have hardcoded only two sessions per machine, the machine should take max 2 transcodes and the other files should wait in queue. Adding of machines to the list and removing them can be hardcoded as well, we can do it from the source code if needed

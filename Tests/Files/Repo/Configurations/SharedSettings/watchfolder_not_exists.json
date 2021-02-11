@@ -1,0 +1,7 @@
+{
+  "Watchfolder": "invalid_path\\very_invalid\\notExits",
+  "Delay": 100,
+  "ConnectionPort": 5001,
+  "GenericCommand": "random command string",
+  "OutputFolder": "E:\\Projects\\Radinoiu\\mxf2dash\\Tests\\Files\\Slaves"
+}

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"><?define Master_TargetDir=$(var.Master.TargetDir)?><?define Commons_TargetDir=$(var.Commons.TargetDir)?>
+	<Product Id="*" Name="MasterSetup" Language="1033" Version="1.0.0.0" Manufacturer="Damian Radinoiu" UpgradeCode="16ab5347-1c17-448c-a86a-90c3476d957e">
+		<Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" InstallPrivileges="elevated" />
+		<Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+
+		<UIRef Id="WixUI_InstallDir" />
+
+		<MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+		<MediaTemplate EmbedCab="yes" />
+
+		<Feature Id="ProductFeature" Title="MasterSetup" Level="1">
+			<ComponentGroupRef Id="ProductComponents" />
+		</Feature>
+
+		<Icon Id="icon.ico" SourceFile="$(var.Master_TargetDir)ffmpeg.ico"/>
+		<Property Id="ARPPRODUCTICON" Value="icon.ico" />
+	</Product>
+
+	<Fragment>
+		<Directory Id="TARGETDIR" Name="SourceDir">
+			<Directory Id="ProgramFilesFolder">
+				<Directory Id="INSTALLFOLDER" Name="MasterSetup" />
+			</Directory>
+		</Directory>
+	</Fragment>
+
+	<Fragment>
+		<ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
+			<Component Id="Master.exe" Guid="07414304-27e8-4f2b-9fc3-2c6be6d27acb">
+			  <File Id="Master.exe" Name="Master.exe" Source="$(var.Master_TargetDir)Master.exe" />
+			</Component>
+			<Component Id="Master.exe.config" Guid="dc5e77f5-a65b-401a-ad34-7bd3011f3099">
+			  <File Id="Master.exe.config" Name="Master.exe.config" Source="$(var.Master_TargetDir)Master.exe.config" />
+			</Component>
+			<Component Id="Commons.dll" Guid="ca0e9d0f-73e7-46b2-9ca9-82422471ce80">
+			  <File Id="Commons.dll" Name="Commons.dll" Source="$(var.Commons_TargetDir)Commons.dll" />
+			</Component>
+			<Component Id="Newtonsoft.Json.dll" Guid="ee9725ec-ee78-4332-9af4-ce05d93798d6">
+			  <File Id="Newtonsoft.Json.dll" Name="Newtonsoft.Json.dll" Source="$(var.Master_TargetDir)Newtonsoft.Json.dll" />
+			</Component>
+			<Component Id="ffmpeg.ico" Guid="ea99ed4c-0929-4bd6-a736-9461e5609ace">
+				<File Id="ffmpeg.ico" Name="ffmpeg.ico" Source="$(var.Master_TargetDir)ffmpeg.ico" />
+			</Component>
+			<Component Id="config.json" Guid="ea99ed4c-0929-4bd6-a736-9461e5609acf">
+				<File Id="config.json" Name="config.json" Source="$(var.Master_TargetDir)config.json" />
+			</Component>
+		</ComponentGroup>
+	</Fragment>
+</Wix>

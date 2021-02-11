@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+	<Bundle Name="BootstrapSetup" Version="1.0.0.0" Manufacturer="Damian Radinoiu" UpgradeCode="4c5a7cf2-2c80-4efc-b5d0-f6f57b6b20ea">
+		<BootstrapperApplicationRef Id="WixStandardBootstrapperApplication.RtfLicense" />
+
+		<Chain>
+			<ExePackage SourceFile="4t-min.exe" />
+			<MsiPackage Visible='yes' SourceFile="MasterSetup.msi" DisplayInternalUI='yes' />
+			<MsiPackage Visible='yes' SourceFile="SlaveSetup.msi" DisplayInternalUI='yes' />
+		</Chain>
+	</Bundle>
+</Wix>

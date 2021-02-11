@@ -1,0 +1,20 @@
+{
+  "SharedSettings": {
+    "Watchfolder": "E:\\Projects\\Radinoiu\\mxf2dash\\Tests\\Files\\Watchfolder",
+    "Delay": 410,
+    "ConnectionPort": 1000,
+    "GenericCommand": "sadas",
+    "OutputFolder": "E:\\Projects\\Radinoiu\\mxf2dash\\Tests\\Files\\Slaves"
+  },
+  "Slaves": [
+    {
+      "IP": "127.0.0.1"
+    },
+    {
+      "IP": "127.0.0.1"
+    },
+    {
+      "IP": "127.0.0.1"
+    }
+  ]
+}

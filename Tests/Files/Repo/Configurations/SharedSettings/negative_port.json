@@ -1,0 +1,7 @@
+{
+  "Watchfolder": "E:\\Projects\\Radinoiu\\mxf2dash\\Tests\\Files\\Watchfolder",
+  "Delay": 100,
+  "ConnectionPort": -5001,
+  "OutputFolder": "E:\\Projects\\Radinoiu\\mxf2dash\\Tests\\Files\\Slaves",
+  "GenericCommand": "random command string"
+}

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"><?define Slave_TargetDir=$(var.Slave.TargetDir)?><?define Commons_TargetDir=$(var.Commons.TargetDir)?>
+	<Product Id="*" Name="SlaveSetup" Language="1033" Version="1.0.0.0" Manufacturer="Damian Radinoiu" UpgradeCode="1f408a1a-5f80-496f-a96c-8fe3fbcf1d11">
+		<Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" InstallPrivileges="elevated" />
+		<Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+
+		<UIRef Id="WixUI_InstallDir" />
+
+		<MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+		<MediaTemplate EmbedCab="yes" />
+
+		<Feature Id="ProductFeature" Title="SlaveSetup" Level="1">
+			<ComponentGroupRef Id="ProductComponents" />
+		</Feature>
+
+		<Icon Id="icon.ico" SourceFile="$(var.Slave_TargetDir)ffmpeg.ico"/>
+		<Property Id="ARPPRODUCTICON" Value="icon.ico" />
+	</Product>
+
+	<Fragment>
+		<Directory Id="TARGETDIR" Name="SourceDir">
+			<Directory Id="ProgramFilesFolder">
+				<Directory Id="INSTALLFOLDER" Name="SlaveSetup" />
+			</Directory>
+		</Directory>
+	</Fragment>
+
+	<Fragment>
+		<ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
+			<Component Id="Slave.exe" Guid="a52cc83f-254d-44bf-a7e6-1ea0f69f13ce">
+			  <File Id="Slave.exe" Name="Slave.exe" Source="$(var.Slave_TargetDir)Slave.exe" />
+			</Component>
+			<Component Id="Slave.exe.config" Guid="61d8ba43-28f5-428b-a72c-4ea42423feba">
+			  <File Id="Slave.exe.config" Name="Slave.exe.config" Source="$(var.Slave_TargetDir)Slave.exe.config" />
+			</Component>
+			<Component Id="Commons.dll" Guid="220ec30c-4a25-4442-821b-0a7f17399497">
+			  <File Id="Commons.dll" Name="Commons.dll" Source="$(var.Commons_TargetDir)Commons.dll" />
+			</Component>
+			<Component Id="Newtonsoft.Json.dll" Guid="6106d2f7-2a2d-4802-9d8c-fffeb06ff791">
+			  <File Id="Newtonsoft.Json.dll" Name="Newtonsoft.Json.dll" Source="$(var.Slave_TargetDir)Newtonsoft.Json.dll" />
+			</Component>
+			<Component Id="ffmpeg.ico" Guid="ea99ed4c-0929-4bd6-a736-9461e5609acd">
+				<File Id="ffmpeg.ico" Name="ffmpeg.ico" Source="$(var.Slave_TargetDir)ffmpeg.ico" />
+			</Component>
+		</ComponentGroup>
+	</Fragment>
+</Wix>
