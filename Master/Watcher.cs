@@ -25,7 +25,7 @@ namespace Master
 
             Slave idleSlave = slaves.Find(slave => !slave.IsBusy());
 
-            if (!(idleSlave is null) /*&& idleSlave.SendWork(filePath)*/)
+            if (!(idleSlave is null) && idleSlave.SendWork(filePath))
             {
                 Console.WriteLine("File {0} succesfully sent to slave {1} for transcoding", filePath, idleSlave.IP);
             }
@@ -53,7 +53,7 @@ namespace Master
                 {
                     return;
                 }
-                
+
                 ProcessedOnChangedFiles.Add(filePath);
             }
 
