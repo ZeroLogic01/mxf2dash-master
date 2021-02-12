@@ -12,7 +12,7 @@ namespace Slave
 {
     class Program
     {
-        private static readonly Listener listener= new Listener(); 
+        private static readonly Listener listener = new Listener();
         private static readonly string stdErrFile = "ErrorLogs.txt";
         private static string prompt = "mxf2dash-Slave>";
         public static string InterfaceSeparator { get; set; } = "--------------------";
@@ -35,7 +35,7 @@ namespace Slave
             commands.ForEach(pair => CommandFactory.RegisterItem(pair.Item1, pair.Item2));
         }
 
- 
+
         static void RedirectStdErr(string filename)
         {
             TextWriter newStdErr = new StreamWriter(filename, true);
@@ -51,6 +51,9 @@ namespace Slave
 
         static void Main(string[] args)
         {
+#if DEBUG
+            args = new string[] { "5001", "10" };
+#endif
             Init(args);
 
             //Registering Commands to use later
