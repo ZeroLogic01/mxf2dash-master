@@ -13,7 +13,7 @@ namespace Slave
     {
         private const string WaitingToConnect = "Waiting for a connection from the Master Application at the ip {0} on the port {1}";
  
-        private const string ConnectionInitialisationException = "The communicator could not be initialised, please read the ErrorLogs.txt file";
+        private const string ConnectionInitialisationException = "The communicator could not be initialized, please read the ErrorLogs.txt file";
 
         private bool mustWork = false;
 
@@ -29,6 +29,7 @@ namespace Slave
                      new Tuple<Message.Preamble,IMessageParser>(Message.Preamble.NEGOCIATION, new NegociationParser()),
                      new Tuple<Message.Preamble,IMessageParser>(Message.Preamble.BUSY, new BusyParser()),
                      new Tuple<Message.Preamble,IMessageParser>(Message.Preamble.NEW_FILE, new NewFileParser()),
+                     new Tuple<Message.Preamble,IMessageParser>(Message.Preamble.KILL_PROCESS, new KillProcessParser()),
                 };
 
             parsers.ForEach(pair => MessageParserFactory.RegisterItem(pair.Item1, pair.Item2));

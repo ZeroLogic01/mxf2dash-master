@@ -13,7 +13,7 @@ namespace Master
     public class Settings
     {
         public static string ConfigFilename = "config.json";
-		private static readonly string ConfigurationException = "Configuration was unsuccesful due to {0}, please read the ErrorLogs.txt file";
+		private static readonly string ConfigurationException = "Configuration was unsuccessful due to {0}, please read the ErrorLogs.txt file";
 
 		public SharedSettings SharedSettings { get; set; }
         public List<Slave> Slaves { get; set; }
@@ -39,7 +39,7 @@ namespace Master
 			settings.SharedSettings.Validate();
 
 
-			Console.WriteLine(ConfigFilename + " loaded succesfully");
+			Console.WriteLine(ConfigFilename + " loaded successfully");
 
 			Console.WriteLine(Program.InterfaceSeparator);
 			SettingsBackup = settings;

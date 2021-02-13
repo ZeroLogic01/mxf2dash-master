@@ -27,26 +27,30 @@ namespace Commons
             NEW_FILE,
             BUSY,
             TRUE,
-            FALSE
+            FALSE,
+            /// <summary>
+            /// Kill FFMPEG process
+            /// </summary>
+            KILL_PROCESS
         };
 
         public Message(string content, Preamble preamble)
         {
             string preambleString = preamble.ToString();
-            string headerPadding = Padding.Substring(0, HeaderLength-preambleString.Length);
+            string headerPadding = Padding.Substring(0, HeaderLength - preambleString.Length);
             string bodyPadding = Padding.Substring(0, BodyLength - content.Length);
 
 
-            Data = string.Format(MessageTemplate, preambleString, headerPadding,content,bodyPadding);
+            Data = string.Format(MessageTemplate, preambleString, headerPadding, content, bodyPadding);
 
-            
+
         }
 
         public static Message Parse(byte[] receivedData)
         {
             string messageString = Encoding.ASCII.GetString(receivedData);
 
-            if (messageString.Length != MessageBlockLength) 
+            if (messageString.Length != MessageBlockLength)
             {
                 throw new ArgumentException("Received data length not equal to MessageBlockLength");
             }
@@ -64,7 +68,7 @@ namespace Commons
         public Preamble MessagePreamble
         {
             get => (Preamble)Enum.Parse(typeof(Preamble), Data.Substring(0, Data.IndexOf(PaddingCharacter)));
-        } 
+        }
         public string MessageBody
         {
             get => Data.Substring(HeaderLength).TrimEnd(PaddingCharacter);

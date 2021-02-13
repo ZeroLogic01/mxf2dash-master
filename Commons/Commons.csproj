@@ -55,6 +55,7 @@
     <Compile Include="ProcessFactory.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SharedSettings.cs" />
+    <Compile Include="FFMPEGProcess.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

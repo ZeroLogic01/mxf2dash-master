@@ -11,13 +11,15 @@ namespace Master
 {
     class Watcher
     {
-        private FileSystemWatcher FSWatcher;
-        private Timer retryTimer;
+        private readonly FileSystemWatcher WatchFolderWatcher;
+        /// <summary>
+        /// File watcher to watch <see cref="CheckFolder"/> for XML files from the 3rd party application.
+        /// </summary>
+        private readonly FileSystemWatcher CheckFolderFSWatcher;
+        private readonly Timer retryTimer;
         private const int timerDuration = 1 * 1000;
-
-        Queue<string> UnproccessedFiles = new Queue<string>(15);
-
-        List<string> ProcessedOnChangedFiles = new List<string>();
+        private readonly Queue<string> UnproccessedFiles = new Queue<string>(15);
+        private readonly List<string> ProcessedOnChangedFiles = new List<string>();
 
         private void PutSlaveToWork(string filePath)
         {
@@ -27,7 +29,7 @@ namespace Master
 
             if (!(idleSlave is null) && idleSlave.SendWork(filePath))
             {
-                Console.WriteLine("File {0} succesfully sent to slave {1} for transcoding", filePath, idleSlave.IP);
+                Console.WriteLine("File {0} successfully sent to slave {1} for transcoding", filePath, idleSlave.IP);
             }
             else
             {
@@ -35,7 +37,7 @@ namespace Master
             }
         }
 
-        private void OnCreate(object source, FileSystemEventArgs e)
+        private void WatchFolderWatcher_OnCreated(object source, FileSystemEventArgs e)
         {
             Thread.Sleep(Settings.Instance.SharedSettings.Delay * 1000);
             string filePath = e.FullPath;
@@ -44,7 +46,7 @@ namespace Master
 
 
         static readonly object padlock = new object();
-        private void OnChanged(object sender, FileSystemEventArgs e)
+        private void WatchFolderWatcher_OnChanged(object sender, FileSystemEventArgs e)
         {
             string filePath = e.FullPath;
             lock (padlock)
@@ -63,7 +65,9 @@ namespace Master
 
         public Watcher()
         {
-            FSWatcher = new FileSystemWatcher
+            #region Watch Folder File System Watcher
+
+            WatchFolderWatcher = new FileSystemWatcher
             {
                 Path = Settings.Instance.SharedSettings.Watchfolder,
 
@@ -71,12 +75,79 @@ namespace Master
                 Filter = "*.mxf"
             };
 
-            FSWatcher.Created += OnCreate;
-            FSWatcher.Changed += OnChanged;
+            WatchFolderWatcher.Created += WatchFolderWatcher_OnCreated;
+            WatchFolderWatcher.Changed += WatchFolderWatcher_OnChanged;
             retryTimer = new Timer(RetryCallback, null, Timeout.Infinite, Timeout.Infinite);
+            #endregion
+
+            #region  Check folder (XML) file system watcher
+
+            CheckFolderFSWatcher = new FileSystemWatcher()
+            {
+                Path = Settings.Instance.SharedSettings.Checkfolder,
+                NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.Size,
+                Filter = "*.xml"
+            };
+
+            CheckFolderFSWatcher.Created += CheckFolderFSWatcher_OnCreated;
+
+            #endregion
         }
 
+        private void PerformTranscoderOverwriteRequest(string fileName)
+        {
+            var overWriteRequest = OverwriteRequestFileHelper.Read(fileName);
+            if (overWriteRequest != null)
+            {
+                bool isXmlFileModified = false;
 
+                foreach (var slave in Settings.Instance.Slaves)
+                {
+                    var process = slave.FilesBeingProcessed
+                        .FirstOrDefault(o => Path.GetFileName(o.FileName)
+                        .Equals(overWriteRequest.FileName, StringComparison.OrdinalIgnoreCase));
+
+                    if (process != null)
+                    {
+                        var isPorcessKilled = slave.KillProcess(process);
+
+                        overWriteRequest.Status = isPorcessKilled ? "Done" : "Failed";
+                        overWriteRequest.TimeofProcessed = string
+                            .Format("{0}T{1}", DateTime.Now.ToString("yyyy-MM-dd"), DateTime.Now.ToString("HH:mm"));
+
+
+                        // update the XML file
+                        if (OverwriteRequestFileHelper.Write(fileName, overWriteRequest))
+                        {
+                            isXmlFileModified = true;
+
+                            // change the name with status as a suffix
+                            File.Move(fileName, $"{fileName}_{overWriteRequest.Status.ToLower()}");
+
+                            ProcessedOnChangedFiles.Remove(process.FileName);
+                        }
+
+                        break;
+                    }
+                }
+                // if this is false, this means no slave currently processing this file, 
+                // we can set it's status as 'Done' in case 3rd party app don't have to wait indefinitely 
+                if (!isXmlFileModified)
+                {
+                    overWriteRequest.Status = "Done";
+                    overWriteRequest.TimeofProcessed = string
+                           .Format("{0}T{1}", DateTime.Now.ToString("yyyy-MM-dd"), DateTime.Now.ToString("HH:mm"));
+                    // change the name with status as a suffix
+                    File.Move(fileName, $"{fileName}_{overWriteRequest.Status.ToLower()}");
+                }
+            }
+        }
+
+        private void CheckFolderFSWatcher_OnCreated(object sender, FileSystemEventArgs e)
+        {
+            PerformTranscoderOverwriteRequest(e.FullPath);
+
+        }
 
         private void RetryCallback(object state)
         {
@@ -93,13 +164,13 @@ namespace Master
 
         public void Start()
         {
-            FSWatcher.EnableRaisingEvents = true;
+            WatchFolderWatcher.EnableRaisingEvents = CheckFolderFSWatcher.EnableRaisingEvents = true;
             retryTimer.Change(timerDuration, timerDuration);
         }
 
         public void Stop()
         {
-            FSWatcher.EnableRaisingEvents = false;
+            WatchFolderWatcher.EnableRaisingEvents = CheckFolderFSWatcher.EnableRaisingEvents = false;
             retryTimer.Change(Timeout.Infinite, Timeout.Infinite);
         }
 

@@ -59,7 +59,9 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Settings.cs" />
     <Compile Include="Slave.cs" />
+    <Compile Include="Models\TranscoderOverwriteRequest.cs" />
     <Compile Include="Watcher.cs" />
+    <Compile Include="OverwriteRequestFileHelper.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

@@ -1,5 +1,6 @@
 ﻿using Commons;
 using Commons.MessageParsers;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -13,9 +14,9 @@ namespace Slave.MessageParsers
 {
     class NewFileParser : IMessageParser
     {
-
-        private static readonly string SuccessMessageTemplate = "File {0} was converted succesfully";
-        private static readonly string FailedMessageTemplate = "File {0} was not converted succesfully due to an exception. Please read the ErrorLog.txt file";
+        private const string SuccessMessageTemplate = "File {0} was converted successfully";
+        private const string FailedMessageTemplate = "File {0} was not converted successfully due to an exception. Please read the ErrorLog.txt file";
+        private const string FailedMessageOnOverwriteRequestTemplate = "File {0} conversion failed unexpectedly. Please read the ErrorLog.txt file for more info.";
 
         public Message ParseMessage(Message message)
         {
@@ -32,9 +33,11 @@ namespace Slave.MessageParsers
 
             string outDir = Path.Combine(ss.OutputFolder, Path.GetFileNameWithoutExtension(filePath));
 
-            string mainFile = Path.Combine(outDir,Path.GetFileNameWithoutExtension(filePath)) + ".MPD";
+            string mainFile = Path.Combine(outDir, Path.GetFileNameWithoutExtension(filePath)) + ".MPD";
 
 
+
+            ManualResetEvent manualReset = new ManualResetEvent(false);
             Process p = ProcessFactory.CreateProcess(ss.GenericCommand, filePath, mainFile, outDir);
 
             WaitCallback cb = (object state) =>
@@ -42,8 +45,19 @@ namespace Slave.MessageParsers
                 try
                 {
                     p.Start();
+
+                    manualReset.Set();
+
                     p.WaitForExit();
-                    Console.WriteLine(SuccessMessageTemplate, filePath);
+                    if (p.ExitCode == 0)
+                    {
+                        Console.WriteLine(SuccessMessageTemplate, filePath);
+                    }
+                    //else
+                    //{
+                    //    string prompt = string.Format(FailedMessageOnOverwriteRequestTemplate, filePath);
+                    //    Logger.Log(new Exception($"Process exited with {p.ExitCode} exit code"), prompt: prompt);
+                    //}
                 }
                 catch (Exception E)
                 {
@@ -53,12 +67,17 @@ namespace Slave.MessageParsers
                 finally
                 {
                     Settings.Instance.CurrentWork--;
+                    manualReset.Set();
                 }
-                
+
             };
             ThreadPool.QueueUserWorkItem(cb);
 
-            return new Message("", Message.Preamble.TRUE);
+            manualReset.WaitOne();
+
+            string json = JsonConvert.SerializeObject(new FFMPEGProcess() { FileName = filePath, ProcessId = p.Id });
+
+            return new Message(json, Message.Preamble.TRUE);
         }
     }
 }

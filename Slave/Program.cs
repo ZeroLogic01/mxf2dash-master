@@ -59,7 +59,7 @@ namespace Slave
             //Registering Commands to use later
             RegisterCommands();
 
-            //Infinite loop so that we hold the program on indefinitelly
+            //Infinite loop so that we hold the program on indefinitely
             //Can get commands
             while (true)
             {
