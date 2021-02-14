@@ -47,7 +47,17 @@ namespace Master
 
             if (process.FileName.Equals(filename))
             {
-                FilesBeingProcessed.Add(process);
+                // we don't want to maintain FilesBeingProcessed list with duplicate files
+                var oldProcess = FilesBeingProcessed.FirstOrDefault(p => p.FileName.Equals(filename));
+
+                if (oldProcess == null)
+                {// if the file name doesn't exist, add the process to the list
+                    FilesBeingProcessed.Add(process);
+                }
+                else
+                {// just update the process id, update the 
+                    oldProcess.ProcessId = process.ProcessId;
+                }
             }
             else
             {
@@ -70,7 +80,7 @@ namespace Master
 
             Message.Preamble preamble = recv.MessagePreamble;
 
-           
+
 
             // To be done: On SUCCESS remove the entry from the FilesBeingProcessed
             if (preamble.Equals(Message.Preamble.SUCCESS))
