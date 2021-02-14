@@ -15,6 +15,7 @@ namespace Commons
         private static readonly string WatchfolderNotFoundMessage = "Watchfolder at path {0} was not found";
         private static readonly string OutputfolderNotFoundMessage = "OutputFolder at path {0} was not found";
         private static readonly string CheckfolderNotFoundMessage = "CheckFolder at path {0} was not found";
+        private static readonly string OverwriteRequestOutputFolderNotFoundMessage = "OverwriteRequestOutputFolder at path {0} was not found";
         private static readonly string KillWaitDurationNegativeMessage = "Kill wait duration cannot be less than {0}";
         private static readonly string KillTotalRetriesNegativeMessage = "Kill total retries count is negative";
         private static readonly string PortNumberNegativeMessage = "Port number is negative";
@@ -31,6 +32,11 @@ namespace Commons
         /// coming from 3rd party application
         /// </summary>
         public string Checkfolder { get; set; }
+
+        /// <summary>
+        /// Where XML output file will be written
+        /// </summary>
+        public string OverwriteRequestOutputFolder { get; set; }
 
         /// <summary>
         /// Max number of seconds to wait for the ffmpeg process to be killed before setting the 
@@ -87,6 +93,11 @@ namespace Commons
             else if (!Directory.Exists(Checkfolder))
             {
                 string message = string.Format(CheckfolderNotFoundMessage, Checkfolder);
+                throw new DirectoryNotFoundException(message);
+            }
+            else if (!Directory.Exists(OverwriteRequestOutputFolder))
+            {
+                string message = string.Format(OverwriteRequestOutputFolderNotFoundMessage, OverwriteRequestOutputFolder);
                 throw new DirectoryNotFoundException(message);
             }
             else if (KillWaitDuration < KillWaitMinimumDuration)

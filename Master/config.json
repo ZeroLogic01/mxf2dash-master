@@ -3,6 +3,7 @@
     "Watchfolder": "F:\\Workspace\\watch folder",
     "OutputFolder": "F:\\Workspace\\output folder",
     "CheckFolder": "F:\\Workspace\\check folder",
+    "OverwriteRequestOutputFolder": "F:\\Workspace\\Overwrite Request Output Folder",
     "KillWaitDuration": 5,
     "KillTotalRetries": 3,
     "Delay": 1,

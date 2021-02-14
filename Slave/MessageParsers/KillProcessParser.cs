@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Management;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -30,7 +31,35 @@ namespace Slave.MessageParsers
             {
                 AutoResetEvent autoReset = new AutoResetEvent(false);
 
-                ThreadPool.QueueUserWorkItem(state => Kill_FFMPEG_Process(process, processToBeKilled, autoReset));
+                WaitCallback cb = (object state) =>
+                {
+                    int i = 0;
+                    do
+                    {
+                        try
+                        {
+                            if (!processToBeKilled.HasExited)
+                            {
+                                //    processToBeKilled.Kill();
+
+                                KillProcessAndChildren(processToBeKilled.Id);
+
+                                autoReset.Set();
+                                break;
+                            }
+                        }
+                        catch (Exception E)
+                        {
+                            string msg = string.Format(ProcessFailedToStopExceptionMessageTemplate, i + 1, processToBeKilled.Id, process.FileName);
+                            Logger.Log(E, prompt: msg);
+                        }
+                        i++;
+                    }
+                    while (i < Settings.Instance.SharedSettings.KillTotalRetries);
+
+                };
+
+                ThreadPool.QueueUserWorkItem(cb);
 
                 // Blocks the current thread until the current instance receives a signal.
                 // If it doesn't receive a signal it will timeout after KillWaitDuration seconds.
@@ -66,6 +95,36 @@ namespace Slave.MessageParsers
             return response;
         }
 
+
+        /// <summary>
+        /// Kill a process, and all of its children, grandchildren, etc.
+        /// </summary>
+        /// <param name="pid">Process ID.</param>
+        private static void KillProcessAndChildren(int pid)
+        {
+            // Cannot close 'system idle process'.
+            if (pid == 0)
+            {
+                return;
+            }
+            ManagementObjectSearcher searcher = new ManagementObjectSearcher
+                    ("Select * From Win32_Process Where ParentProcessID=" + pid);
+            ManagementObjectCollection moc = searcher.Get();
+            foreach (ManagementObject mo in moc)
+            {
+                KillProcessAndChildren(Convert.ToInt32(mo["ProcessID"]));
+            }
+            try
+            {
+                Process proc = Process.GetProcessById(pid);
+                //Console.WriteLine(proc.Id);
+                proc.Kill();
+            }
+            catch (ArgumentException)
+            {
+                // Process already exited.
+            }
+        }
 
         private void Kill_FFMPEG_Process(FFMPEGProcess process, Process processToBeKilled, AutoResetEvent autoReset)
         {

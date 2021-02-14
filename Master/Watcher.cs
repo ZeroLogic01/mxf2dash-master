@@ -99,7 +99,10 @@ namespace Master
             var overWriteRequest = OverwriteRequestFileHelper.Read(fileName);
             if (overWriteRequest != null)
             {
-                bool isXmlFileModified = false;
+                bool isProcessFound = false;
+
+                string xmlOutputFile = Path.Combine(Settings.Instance.SharedSettings.OverwriteRequestOutputFolder,
+                           $"{Path.GetFileName(fileName)}_{overWriteRequest.Status.ToLower()}");
 
                 foreach (var slave in Settings.Instance.Slaves)
                 {
@@ -109,36 +112,28 @@ namespace Master
 
                     if (process != null)
                     {
-                        var isPorcessKilled = slave.KillProcess(process);
-
-                        overWriteRequest.Status = isPorcessKilled ? "Done" : "Failed";
-                        overWriteRequest.TimeofProcessed = string
-                            .Format("{0}T{1}", DateTime.Now.ToString("yyyy-MM-dd"), DateTime.Now.ToString("HH:mm"));
-
-
-                        // update the XML file
-                        if (OverwriteRequestFileHelper.Write(fileName, overWriteRequest))
-                        {
-                            isXmlFileModified = true;
-
-                            // change the name with status as a suffix
-                            File.Move(fileName, $"{fileName}_{overWriteRequest.Status.ToLower()}");
-
-                            ProcessedOnChangedFiles.Remove(process.FileName);
-                        }
-
+                        isProcessFound = true;
+                        overWriteRequest.Status = slave.KillProcess(process) ? "Done" : "Failed";
                         break;
                     }
                 }
+
                 // if this is false, this means no slave currently processing this file, 
                 // we can set it's status as 'Done' in case 3rd party app don't have to wait indefinitely 
-                if (!isXmlFileModified)
+                if (!isProcessFound)
                 {
                     overWriteRequest.Status = "Done";
-                    overWriteRequest.TimeofProcessed = string
-                           .Format("{0}T{1}", DateTime.Now.ToString("yyyy-MM-dd"), DateTime.Now.ToString("HH:mm"));
-                    // change the name with status as a suffix
-                    File.Move(fileName, $"{fileName}_{overWriteRequest.Status.ToLower()}");
+                }
+
+                // change the name with status as a suffix
+                overWriteRequest.TimeofProcessed = string
+                            .Format("{0}T{1}", DateTime.Now.ToString("yyyy-MM-dd"), DateTime.Now.ToString("HH:mm"));
+
+                // update the XML file
+                if (OverwriteRequestFileHelper.Write(xmlOutputFile, overWriteRequest))
+                {
+                    ProcessedOnChangedFiles
+                        .Remove(Path.Combine(Settings.Instance.SharedSettings.Watchfolder, overWriteRequest.FileName));
                 }
             }
         }
