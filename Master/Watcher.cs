@@ -1,5 +1,6 @@
 ﻿using Commons;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -142,14 +143,14 @@ namespace Master
 
                 foreach (var slave in Settings.Instance.Slaves)
                 {
-                    var process = slave.FilesBeingProcessed
-                        .FirstOrDefault(o => Path.GetFileName(o.FileName)
+                    var process = slave.FilesBeingProcessedDictionary
+                        .FirstOrDefault(o => Path.GetFileName(o.Key)
                         .Equals(overWriteRequest.FileName, StringComparison.OrdinalIgnoreCase));
 
-                    if (process != null)
+                    if (process.Key != null)
                     {
                         isProcessFound = true;
-                        overWriteRequest.Status = slave.KillProcess(process) ? "Done" : "Failed";
+                        overWriteRequest.Status = slave.KillProcess(process.Value) ? "Done" : "Failed";
                         break;
                     }
                 }
@@ -175,7 +176,7 @@ namespace Master
                 //overwrite request file path
                 string filePath = Path.Combine(Settings.Instance.SharedSettings.Watchfolder, overWriteRequest.FileName);
                 // send it back to slave for re-processing
-                if (!UnproccessedFiles.Contains(filePath))
+                if (!UnproccessedFiles.Contains(filePath) && File.Exists(filePath))
                 {
                     PutSlaveToWork(filePath);
                 }
@@ -184,6 +185,7 @@ namespace Master
 
         private void CheckFolderFSWatcher_OnCreated(object sender, FileSystemEventArgs e)
         {
+            Thread.Sleep(TimeSpan.FromSeconds(Settings.Instance.SharedSettings.Delay));
             PerformTranscoderOverwriteRequest(e.FullPath);
         }
 

@@ -1,6 +1,7 @@
 ﻿using Commons;
 using Newtonsoft.Json;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -21,7 +22,7 @@ namespace Master
         private IPAddress _IP;
         public string IP { get => _IP.ToString(); set => _IP = IPAddress.Parse(value); }
 
-        public List<FFMPEGProcess> FilesBeingProcessed = new List<FFMPEGProcess>();
+        public readonly ConcurrentDictionary<string, FFMPEGProcess> FilesBeingProcessedDictionary = new ConcurrentDictionary<string, FFMPEGProcess>();
 
         public bool IsBusy()
         {
@@ -48,15 +49,15 @@ namespace Master
             if (process.FileName.Equals(filename))
             {
                 // we don't want to maintain FilesBeingProcessed list with duplicate files
-                var oldProcess = FilesBeingProcessed.FirstOrDefault(p => p.FileName.Equals(filename));
+                KeyValuePair<string, FFMPEGProcess> oldProcess = FilesBeingProcessedDictionary.FirstOrDefault(p => p.Key.Equals(filename));
 
-                if (oldProcess == null)
+                if (oldProcess.Key == null)
                 {// if the file name doesn't exist, add the process to the list
-                    FilesBeingProcessed.Add(process);
+                    FilesBeingProcessedDictionary.TryAdd(filename, process);
                 }
                 else
                 {// just update the oldProcess id, it'll get updated in the list
-                    oldProcess.ProcessId = process.ProcessId;
+                    oldProcess.Value.ProcessId = process.ProcessId;
                 }
             }
             else
@@ -81,18 +82,17 @@ namespace Master
             Message.Preamble preamble = recv.MessagePreamble;
 
 
-
             // To be done: On SUCCESS remove the entry from the FilesBeingProcessed
             if (preamble.Equals(Message.Preamble.SUCCESS))
             {
-                FilesBeingProcessed.Remove(process);
-                Console.WriteLine(recv.MessageBody);
+                FilesBeingProcessedDictionary.TryRemove(process.FileName, out _);
             }
             else
             {
                 Logger.Log(new Exception(recv.MessageBody));
-                Console.WriteLine(recv.MessageBody);
             }
+
+            Console.WriteLine(recv.MessageBody);
 
 
             return preamble.Equals(Message.Preamble.SUCCESS);
