@@ -176,8 +176,10 @@ namespace Master
                 //overwrite request file path
                 string filePath = Path.Combine(Settings.Instance.SharedSettings.Watchfolder, overWriteRequest.FileName);
                 // send it back to slave for re-processing
-                if (!UnproccessedFiles.Contains(filePath) && File.Exists(filePath))
+                if (File.Exists(filePath))
                 {
+                    // in case overwrite request contains the file name which is not in the FilesBeingProcessed List
+                    AddToFilesBeingProcessed(filePath);
                     PutSlaveToWork(filePath);
                 }
             }
