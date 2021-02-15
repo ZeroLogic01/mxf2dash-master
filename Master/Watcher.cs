@@ -19,7 +19,7 @@ namespace Master
         private readonly Timer retryTimer;
         private const int timerDuration = 1 * 1000;
         private readonly Queue<string> UnproccessedFiles = new Queue<string>(15);
-        private readonly List<string> ProcessedOnChangedFiles = new List<string>();
+        private readonly List<string> FilesBeingProcessed = new List<string>();
 
         private void PutSlaveToWork(string filePath)
         {
@@ -39,28 +39,29 @@ namespace Master
 
         private void WatchFolderWatcher_OnCreated(object source, FileSystemEventArgs e)
         {
-            Thread.Sleep(Settings.Instance.SharedSettings.Delay * 1000);
             string filePath = e.FullPath;
-            PutSlaveToWork(filePath);
+
+            if (AddToFilesBeingProcessed(filePath))
+            {
+                Thread.Sleep(Settings.Instance.SharedSettings.Delay * 1000);
+                PutSlaveToWork(filePath);
+            }
         }
 
 
         static readonly object padlock = new object();
-        private void WatchFolderWatcher_OnChanged(object sender, FileSystemEventArgs e)
+        private bool AddToFilesBeingProcessed(string filePath)
         {
-            string filePath = e.FullPath;
             lock (padlock)
             {
-                if (ProcessedOnChangedFiles.Contains(e.FullPath))
+                if (!FilesBeingProcessed.Contains(filePath))
                 {
-                    return;
+                    FilesBeingProcessed.Add(filePath);
+                    return true;
                 }
 
-                ProcessedOnChangedFiles.Add(filePath);
+                return false;
             }
-
-            Thread.Sleep(Settings.Instance.SharedSettings.Delay * 1000);
-            PutSlaveToWork(filePath);
         }
 
         public Watcher()
@@ -76,7 +77,8 @@ namespace Master
             };
 
             WatchFolderWatcher.Created += WatchFolderWatcher_OnCreated;
-            WatchFolderWatcher.Changed += WatchFolderWatcher_OnChanged;
+            WatchFolderWatcher.Changed += WatchFolderWatcher_OnCreated;
+            WatchFolderWatcher.Error += FileSystemWatcher_Error;
             retryTimer = new Timer(RetryCallback, null, Timeout.Infinite, Timeout.Infinite);
             #endregion
 
@@ -90,19 +92,53 @@ namespace Master
             };
 
             CheckFolderFSWatcher.Created += CheckFolderFSWatcher_OnCreated;
+            WatchFolderWatcher.Error += FileSystemWatcher_Error;
 
             #endregion
         }
 
-        private void PerformTranscoderOverwriteRequest(string fileName)
+
+        private void FileSystemWatcher_Error(object sender, ErrorEventArgs e)
         {
-            var overWriteRequest = OverwriteRequestFileHelper.Read(fileName);
+            if (e.GetException().GetType() == typeof(InternalBufferOverflowException))
+            {
+                Console.WriteLine("Error: File System Watcher internal buffer overflow at " + DateTime.Now);
+            }
+            else
+            {
+                Console.WriteLine("Error: Watched directory not accessible at " + DateTime.Now);
+            }
+            NotAccessibleError(sender as FileSystemWatcher, e);
+        }
+
+        static void NotAccessibleError(FileSystemWatcher source, ErrorEventArgs e)
+        {
+            source.EnableRaisingEvents = false;
+            int iMaxAttempts = 120;
+            int iTimeOut = 30000;
+            int i = 0;
+            while (source.EnableRaisingEvents == false && i < iMaxAttempts)
+            {
+                i += 1;
+                try
+                {
+                    source.EnableRaisingEvents = true;
+                }
+                catch
+                {
+                    source.EnableRaisingEvents = false;
+                    System.Threading.Thread.Sleep(iTimeOut);
+                }
+            }
+
+        }
+
+        private void PerformTranscoderOverwriteRequest(string xmlSourceFilePath)
+        {
+            var overWriteRequest = OverwriteRequestFileHelper.Read(xmlSourceFilePath);
             if (overWriteRequest != null)
             {
                 bool isProcessFound = false;
-
-                string xmlOutputFile = Path.Combine(Settings.Instance.SharedSettings.OverwriteRequestOutputFolder,
-                           $"{Path.GetFileName(fileName)}_{overWriteRequest.Status.ToLower()}");
 
                 foreach (var slave in Settings.Instance.Slaves)
                 {
@@ -129,11 +165,19 @@ namespace Master
                 overWriteRequest.TimeofProcessed = string
                             .Format("{0}T{1}", DateTime.Now.ToString("yyyy-MM-dd"), DateTime.Now.ToString("HH:mm"));
 
+
+                string xmlOutputFilePath = Path.Combine(Settings.Instance.SharedSettings.OverwriteRequestOutputFolder,
+                          $"{Path.GetFileName(xmlSourceFilePath)}_{overWriteRequest.Status.ToLower()}");
+
                 // update the XML file
-                if (OverwriteRequestFileHelper.Write(xmlOutputFile, overWriteRequest))
+                OverwriteRequestFileHelper.Write(xmlOutputFilePath, overWriteRequest);
+
+                //overwrite request file path
+                string filePath = Path.Combine(Settings.Instance.SharedSettings.Watchfolder, overWriteRequest.FileName);
+                // send it back to slave for re-processing
+                if (!UnproccessedFiles.Contains(filePath))
                 {
-                    ProcessedOnChangedFiles
-                        .Remove(Path.Combine(Settings.Instance.SharedSettings.Watchfolder, overWriteRequest.FileName));
+                    PutSlaveToWork(filePath);
                 }
             }
         }
@@ -141,7 +185,6 @@ namespace Master
         private void CheckFolderFSWatcher_OnCreated(object sender, FileSystemEventArgs e)
         {
             PerformTranscoderOverwriteRequest(e.FullPath);
-
         }
 
         private void RetryCallback(object state)

@@ -55,7 +55,7 @@ namespace Master
                     FilesBeingProcessed.Add(process);
                 }
                 else
-                {// just update the process id, update the 
+                {// just update the oldProcess id, it'll get updated in the list
                     oldProcess.ProcessId = process.ProcessId;
                 }
             }
