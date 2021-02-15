@@ -15,7 +15,7 @@ namespace Slave.MessageParsers
     class KillProcessParser : IMessageParser
     {
         private const string SuccessfulProcessKill = "FFMPEG process working on {0} was killed successfully due to overwrite request.";
-        private const string FailedProcessKill = "FFMPEG process working on {0} failed to gets killed. After {1} tries & {2} seconds it gets timed-out.";
+        private const string FailedProcessKill = "FFMPEG process working on {0} failed to gets killed, after {1} seconds it gets timed-out.";
 
         public const string ProcessFailedToStopExceptionMessageTemplate = "Try number {0}: FFMPEG process (pid={1}) working on {2} failed to stop, warning issued and written to the log file.";
 
@@ -23,71 +23,53 @@ namespace Slave.MessageParsers
         {
             var process = JsonConvert.DeserializeObject<FFMPEGProcess>(message.MessageBody);
 
-            var processToBeKilled = Process.GetProcessById(process.ProcessId);
-
             Message response;
+            AutoResetEvent autoReset = new AutoResetEvent(false);
 
-            if (processToBeKilled != null || !processToBeKilled.HasExited)
+            WaitCallback cb = (object state) =>
             {
-                AutoResetEvent autoReset = new AutoResetEvent(false);
-
-                WaitCallback cb = (object state) =>
+                int i = 0;
+                do
                 {
-                    int i = 0;
-                    do
+                    try
                     {
-                        try
-                        {
-                            if (!processToBeKilled.HasExited)
-                            {
-                                //    processToBeKilled.Kill();
+                        KillProcessAndChildren(process.ProcessId);
+                        autoReset.Set();
+                        break;
 
-                                KillProcessAndChildren(processToBeKilled.Id);
-
-                                autoReset.Set();
-                                break;
-                            }
-                        }
-                        catch (Exception E)
-                        {
-                            string msg = string.Format(ProcessFailedToStopExceptionMessageTemplate, i + 1, processToBeKilled.Id, process.FileName);
-                            Logger.Log(E, prompt: msg);
-                        }
-                        i++;
                     }
-                    while (i < Settings.Instance.SharedSettings.KillTotalRetries);
-
-                };
-
-                ThreadPool.QueueUserWorkItem(cb);
-
-                // Blocks the current thread until the current instance receives a signal.
-                // If it doesn't receive a signal it will timeout after KillWaitDuration seconds.
-                if (autoReset.WaitOne(TimeSpan.FromSeconds(Settings.Instance.SharedSettings.KillWaitDuration)))
-                {
-                    // if a signal is received
-                    // if processToBeKilled is null we can assume process already exited 
-                    var prompt = string.Format(SuccessfulProcessKill, process.FileName);
-                    response = new Message(prompt, Message.Preamble.SUCCESS);
+                    catch (Exception E)
+                    {
+                        string msg = string.Format(ProcessFailedToStopExceptionMessageTemplate, i + 1, process.ProcessId, process.FileName);
+                        Logger.Log(E, prompt: msg);
+                    }
+                    i++;
                 }
-                else
-                {
-                    // when reset event gets timed out
-                    var prompt = string.Format(FailedProcessKill, process.FileName, Settings.Instance.SharedSettings.KillTotalRetries,
-                        Settings.Instance.SharedSettings.KillWaitDuration);
+                while (i < Settings.Instance.SharedSettings.KillTotalRetries);
 
-                    // also log it
-                    Logger.Log(new Exception(prompt));
+            };
 
-                    response = new Message(prompt, Message.Preamble.FALSE);
-                }
+            ThreadPool.QueueUserWorkItem(cb);
 
-            }
-            else
+            // Blocks the current thread until the current instance receives a signal.
+            // If it doesn't receive a signal it will timeout after KillWaitDuration seconds.
+            if (autoReset.WaitOne(TimeSpan.FromSeconds(Settings.Instance.SharedSettings.KillWaitDuration)))
             {
+                // if a signal is received
                 // if processToBeKilled is null we can assume process already exited 
                 var prompt = string.Format(SuccessfulProcessKill, process.FileName);
                 response = new Message(prompt, Message.Preamble.SUCCESS);
+            }
+            else
+            {
+                // when reset event gets timed out
+                var prompt = string.Format(FailedProcessKill, process.FileName,
+                    Settings.Instance.SharedSettings.KillWaitDuration);
+
+                // also log it
+                Logger.Log(new Exception(prompt));
+
+                response = new Message(prompt, Message.Preamble.FALSE);
             }
 
             Console.WriteLine(response.MessageBody);
@@ -114,10 +96,10 @@ namespace Slave.MessageParsers
             {
                 KillProcessAndChildren(Convert.ToInt32(mo["ProcessID"]));
             }
+
             try
             {
                 Process proc = Process.GetProcessById(pid);
-                //Console.WriteLine(proc.Id);
                 proc.Kill();
             }
             catch (ArgumentException)
@@ -125,32 +107,5 @@ namespace Slave.MessageParsers
                 // Process already exited.
             }
         }
-
-        private void Kill_FFMPEG_Process(FFMPEGProcess process, Process processToBeKilled, AutoResetEvent autoReset)
-        {
-            int i = 0;
-            do
-            {
-                try
-                {
-                    if (!processToBeKilled.HasExited)
-                    {
-                        processToBeKilled.Kill();
-
-                        autoReset.Set();
-                        break;
-                    }
-                }
-                catch (Exception E)
-                {
-                    string msg = string.Format(ProcessFailedToStopExceptionMessageTemplate, i + 1, processToBeKilled.Id, process.FileName);
-                    Logger.Log(E, prompt: msg);
-                }
-                i++;
-            }
-            while (i < Settings.Instance.SharedSettings.KillTotalRetries);
-
-        }
-
     }
 }
