@@ -47,13 +47,16 @@ namespace Master
 
             try
             {
+                TranscoderOverwriteRequest overwriteRequest;
                 // A FileStream is needed to read the XML document.
                 using (FileStream fs = new FileStream(xmlFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
                 {
                     // Uses the De-serialize method to restore the object's state
                     // with data from the XML document. */
-                    return (TranscoderOverwriteRequest)serializer.Deserialize(fs);
+                    overwriteRequest = (TranscoderOverwriteRequest)serializer.Deserialize(fs);
+                    fs?.Close();
                 }
+                return overwriteRequest;
             }
             catch (Exception E)
             {
@@ -90,11 +93,13 @@ namespace Master
 
             try
             {
-                using (FileStream fs = new FileStream(filename, FileMode.Create, FileAccess.Write, FileShare.ReadWrite))
+                using (FileStream fs = new FileStream(filename, FileMode.Create, FileAccess.Write, FileShare.Read))
                 using (var writer = XmlWriter.Create(fs, WriterSettings))
                 {
                     XmlSerializer serializer = new XmlSerializer(typeof(TranscoderOverwriteRequest));
                     serializer.Serialize(writer, overWriteRequest, Namespaces);
+                    writer?.Close();
+                    fs?.Close();
                 }
             }
             catch (Exception E)
