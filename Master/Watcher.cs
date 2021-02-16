@@ -1,4 +1,5 @@
 ﻿using Commons;
+using Master.Models;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -150,7 +151,9 @@ namespace Master
                     if (process.Key != null)
                     {
                         isProcessFound = true;
-                        overWriteRequest.Status = slave.KillProcess(process.Value) ? "Done" : "Failed";
+                        overWriteRequest.Status = slave.KillProcess(process.Value) ?
+                            TranscoderOverwriteRequest.StatusDone :
+                            TranscoderOverwriteRequest.StatusFailed;
                         break;
                     }
                 }
@@ -159,7 +162,7 @@ namespace Master
                 // we can set it's status as 'Done' in case 3rd party app don't have to wait indefinitely 
                 if (!isProcessFound)
                 {
-                    overWriteRequest.Status = "Done";
+                    overWriteRequest.Status = TranscoderOverwriteRequest.StatusDone;
                 }
 
                 // change the name with status as a suffix
@@ -176,11 +179,9 @@ namespace Master
                 //overwrite request file path
                 string filePath = Path.Combine(Settings.Instance.SharedSettings.Watchfolder, overWriteRequest.FileName);
                 // send it back to slave for re-processing
-                if (File.Exists(filePath))
+                if (overWriteRequest.Status.Equals(TranscoderOverwriteRequest.StatusDone) && FilesBeingProcessed.Contains(filePath))
                 {
-                    // in case overwrite request contains the file name which is not in the FilesBeingProcessed List
-                    AddToFilesBeingProcessed(filePath);
-                    PutSlaveToWork(filePath);
+                    FilesBeingProcessed.Remove(filePath);
                 }
             }
         }

@@ -10,6 +10,9 @@ namespace Master.Models
     [XmlRoot("TranscoderOverWriteRequest")]
     public class TranscoderOverwriteRequest
     {
+        public const string StatusDone = "Done";
+        public const string StatusFailed = "Failed";
+
         [XmlElement("Filename", Order = 1)]
         public string FileName { get; set; }
 
