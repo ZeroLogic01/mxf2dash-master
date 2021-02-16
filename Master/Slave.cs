@@ -44,27 +44,38 @@ namespace Master
 
             Message.Preamble preamble = recv.MessagePreamble;
 
-            var process = JsonConvert.DeserializeObject<FFMPEGProcess>(recv.MessageBody);
 
-            if (process.FileName.Equals(filename))
+            if (preamble.Equals(Message.Preamble.TRUE))
             {
-                // we don't want to maintain FilesBeingProcessed list with duplicate files
-                KeyValuePair<string, FFMPEGProcess> oldProcess = FilesBeingProcessedDictionary.FirstOrDefault(p => p.Key.Equals(filename));
+                var process = JsonConvert.DeserializeObject<FFMPEGProcess>(recv.MessageBody);
 
-                if (oldProcess.Key == null)
-                {// if the file name doesn't exist, add the process to the list
-                    FilesBeingProcessedDictionary.TryAdd(filename, process);
+                if (process.FileName.Equals(filename))
+                {
+                    // we don't want to maintain FilesBeingProcessed list with duplicate files
+                    KeyValuePair<string, FFMPEGProcess> oldProcess = FilesBeingProcessedDictionary.FirstOrDefault(p => p.Key.Equals(filename));
+
+                    if (oldProcess.Key == null)
+                    {// if the file name doesn't exist, add the process to the list
+                        FilesBeingProcessedDictionary.TryAdd(filename, process);
+                    }
+                    else
+                    {// just update the oldProcess id, it'll get updated in the list
+                        oldProcess.Value.ProcessId = process.ProcessId;
+                    }
                 }
                 else
-                {// just update the oldProcess id, it'll get updated in the list
-                    oldProcess.Value.ProcessId = process.ProcessId;
+                {
+                    string prompt = string.Format(FileNamesMismatchMessage, process.FileName, filename);
+                    Logger.Log(new Exception("File names mismatch occurred."), prompt: prompt);
                 }
             }
             else
             {
-                string prompt = string.Format(FileNamesMismatchMessage, process.FileName, filename);
-                Logger.Log(new Exception("File names mismatch occurred."), prompt: prompt);
+                // if the ffmpeg process can't be started for some reason
+                var message = recv.MessageBody;
+                Logger.Log(message, prompt: message);
             }
+
 
 
 

@@ -75,9 +75,20 @@ namespace Slave.MessageParsers
 
             manualReset.WaitOne();
 
-            string json = JsonConvert.SerializeObject(new FFMPEGProcess() { FileName = filePath, ProcessId = p.Id });
+            Message messageResonse;
 
-            return new Message(json, Message.Preamble.TRUE);
+            try
+            {
+                string json = JsonConvert.SerializeObject(new FFMPEGProcess() { FileName = filePath, ProcessId = p.Id });
+                messageResonse = new Message(json, Message.Preamble.TRUE);
+            }
+            catch (Exception E)
+            {
+                Logger.Log(E, prompt: E.Message);
+                messageResonse = new Message(E.Message, Message.Preamble.FALSE);
+            }
+
+            return messageResonse;
         }
     }
 }
