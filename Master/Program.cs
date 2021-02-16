@@ -62,7 +62,7 @@ namespace Commons
             }
             catch (Exception e)
             {
-                string prompt = string.Format("Configuration was unsuccesful due to {0}, please read the ErrorLogs.txt file",e.GetType().Name);
+                string prompt = string.Format("Configuration was unsuccessful due to {0}, please read the ErrorLogs.txt file",e.GetType().Name);
                 Logger.LogWithShutDown(e,prompt:prompt);
             }
 
