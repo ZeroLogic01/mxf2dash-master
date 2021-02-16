@@ -20,7 +20,7 @@ namespace Master
         private readonly FileSystemWatcher CheckFolderFSWatcher;
         private readonly Timer retryTimer;
         private const int timerDuration = 1 * 1000;
-        private readonly Queue<string> UnproccessedFiles = new Queue<string>(15);
+        private ConcurrentQueue<string> UnproccessedFiles = new ConcurrentQueue<string>();
         private readonly List<string> FilesBeingProcessed = new List<string>();
 
         private void PutSlaveToWork(string filePath)
@@ -51,7 +51,7 @@ namespace Master
         }
 
 
-        static readonly object padlock = new object();
+        private readonly object padlock = new object();
         private bool AddToFilesBeingProcessed(string filePath)
         {
             lock (padlock)
@@ -138,23 +138,39 @@ namespace Master
         private void PerformTranscoderOverwriteRequest(string xmlSourceFilePath)
         {
             var overWriteRequest = OverwriteRequestFileHelper.Read(xmlSourceFilePath);
+
+            string mfxFilePath = Path.Combine(Settings.Instance.SharedSettings.Watchfolder, overWriteRequest.FileName);
             if (overWriteRequest != null)
             {
                 bool isProcessFound = false;
 
-                foreach (var slave in Settings.Instance.Slaves)
+                // if the overwrite requested for a file is present in the unprocessed queue,
+                if (UnproccessedFiles.Contains(mfxFilePath))
                 {
-                    var process = slave.FilesBeingProcessedDictionary
-                        .FirstOrDefault(o => Path.GetFileName(o.Key)
-                        .Equals(overWriteRequest.FileName, StringComparison.OrdinalIgnoreCase));
-
-                    if (process.Key != null)
+                    List<string> list = UnproccessedFiles.ToList();
+                    if (isProcessFound = list.Remove(mfxFilePath))
                     {
-                        isProcessFound = true;
-                        overWriteRequest.Status = slave.KillProcess(process.Value) ?
-                            TranscoderOverwriteRequest.StatusDone :
-                            TranscoderOverwriteRequest.StatusFailed;
-                        break;
+                        UnproccessedFiles = new ConcurrentQueue<string>(list);
+                     
+                        overWriteRequest.Status = TranscoderOverwriteRequest.StatusDone;
+                    }
+                }
+                else
+                {
+                    foreach (var slave in Settings.Instance.Slaves)
+                    {
+                        var process = slave.FilesBeingProcessedDictionary
+                            .FirstOrDefault(o => Path.GetFileName(o.Key)
+                            .Equals(overWriteRequest.FileName, StringComparison.OrdinalIgnoreCase));
+
+                        if (process.Key != null)
+                        {
+                            isProcessFound = true;
+                            overWriteRequest.Status = slave.KillProcess(process.Value) ?
+                                TranscoderOverwriteRequest.StatusDone :
+                                TranscoderOverwriteRequest.StatusFailed;
+                            break;
+                        }
                     }
                 }
 
@@ -181,7 +197,10 @@ namespace Master
                 // send it back to slave for re-processing
                 if (overWriteRequest.Status.Equals(TranscoderOverwriteRequest.StatusDone) && FilesBeingProcessed.Contains(filePath))
                 {
-                    FilesBeingProcessed.Remove(filePath);
+                    lock (padlock)
+                    {
+                        FilesBeingProcessed.Remove(filePath);
+                    }
                 }
             }
         }
@@ -199,9 +218,9 @@ namespace Master
                 return;
             }
 
-            string filename = UnproccessedFiles.Dequeue();
+            UnproccessedFiles.TryDequeue(out string fileName);
 
-            PutSlaveToWork(filename);
+            PutSlaveToWork(fileName);
 
         }
 
