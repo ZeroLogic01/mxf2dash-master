@@ -139,19 +139,19 @@ namespace Master
         {
             var overWriteRequest = OverwriteRequestFileHelper.Read(xmlSourceFilePath);
 
-            string mfxFilePath = Path.Combine(Settings.Instance.SharedSettings.Watchfolder, overWriteRequest.FileName);
+            string mxfFilePath = Path.Combine(Settings.Instance.SharedSettings.Watchfolder, overWriteRequest.FileName);
             if (overWriteRequest != null)
             {
                 bool isProcessFound = false;
 
                 // if the overwrite requested for a file is present in the unprocessed queue,
-                if (UnproccessedFiles.Contains(mfxFilePath))
+                if (UnproccessedFiles.Contains(mxfFilePath))
                 {
                     List<string> list = UnproccessedFiles.ToList();
-                    if (isProcessFound = list.Remove(mfxFilePath))
+                    if (isProcessFound = list.Remove(mxfFilePath))
                     {
                         UnproccessedFiles = new ConcurrentQueue<string>(list);
-                     
+
                         overWriteRequest.Status = TranscoderOverwriteRequest.StatusDone;
                     }
                 }
@@ -192,14 +192,19 @@ namespace Master
                 // update the XML file
                 OverwriteRequestFileHelper.Write(xmlOutputFilePath, overWriteRequest);
 
-                //overwrite request file path
-                string filePath = Path.Combine(Settings.Instance.SharedSettings.Watchfolder, overWriteRequest.FileName);
                 // send it back to slave for re-processing
-                if (overWriteRequest.Status.Equals(TranscoderOverwriteRequest.StatusDone) && FilesBeingProcessed.Contains(filePath))
+                if (overWriteRequest.Status.Equals(TranscoderOverwriteRequest.StatusDone)
+                    /* if we get V:abc.mxf & V:\\abc.mxf. Both strings are not equal so 
+                     * now we're just comparing the file names ignoring folder path as 
+                     * we will have files from just one folder
+                     */
+                    && FilesBeingProcessed
+                    .FirstOrDefault(file => Path.GetFileName(file)
+                                            .Equals(Path.GetFileName(mxfFilePath))) != null)
                 {
                     lock (padlock)
                     {
-                        FilesBeingProcessed.Remove(filePath);
+                        FilesBeingProcessed.Remove(mxfFilePath);
                     }
                 }
             }
