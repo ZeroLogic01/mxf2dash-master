@@ -5,6 +5,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.Caching;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,6 +23,13 @@ namespace Master
         private const int timerDuration = 1 * 1000;
         private ConcurrentQueue<string> UnproccessedFiles = new ConcurrentQueue<string>();
         private readonly List<string> FilesBeingProcessed = new List<string>();
+
+
+        #region Memory Cache Logic
+        private readonly MemoryCache _memCache;
+        private readonly CacheItemPolicy _cacheItemPolicy;
+        private const int CacheTimeMilliseconds = 1000;
+        #endregion
 
         private void PutSlaveToWork(string filePath)
         {
@@ -68,6 +76,16 @@ namespace Master
 
         public Watcher()
         {
+            #region Memory Cache
+
+            _memCache = MemoryCache.Default;
+            _cacheItemPolicy = new CacheItemPolicy()
+            {
+                RemovedCallback = OnRemovedFromCache
+            };
+
+            #endregion
+
             #region Watch Folder File System Watcher
 
             WatchFolderWatcher = new FileSystemWatcher
@@ -93,12 +111,33 @@ namespace Master
                 Filter = "*.xml"
             };
 
-            CheckFolderFSWatcher.Created += CheckFolderFSWatcher_OnCreated;
+            CheckFolderFSWatcher.Created += CheckFolderFSWatcher_OnChanged;
+            CheckFolderFSWatcher.Changed += CheckFolderFSWatcher_OnChanged;
             WatchFolderWatcher.Error += FileSystemWatcher_Error;
 
             #endregion
         }
 
+        // Add file event to cache for CacheTimeMilliseconds
+        private void CheckFolderFSWatcher_OnChanged(object source, FileSystemEventArgs e)
+        {
+            _cacheItemPolicy.AbsoluteExpiration =
+                DateTimeOffset.Now.AddMilliseconds(CacheTimeMilliseconds);
+
+            // Only add if it is not there already (swallow others)
+            _memCache.AddOrGetExisting(e.Name, e, _cacheItemPolicy);
+        }
+
+        // Handle cache item expiring
+        private void OnRemovedFromCache(CacheEntryRemovedArguments args)
+        {
+            if (args.RemovedReason != CacheEntryRemovedReason.Expired) return;
+
+            // Now actually handle file event
+            var e = (FileSystemEventArgs)args.CacheItem.Value;
+
+            PerformTranscoderOverwriteRequest(e.FullPath);
+        }
 
         private void FileSystemWatcher_Error(object sender, ErrorEventArgs e)
         {
@@ -208,12 +247,6 @@ namespace Master
                     }
                 }
             }
-        }
-
-        private void CheckFolderFSWatcher_OnCreated(object sender, FileSystemEventArgs e)
-        {
-            Thread.Sleep(TimeSpan.FromSeconds(Settings.Instance.SharedSettings.Delay));
-            PerformTranscoderOverwriteRequest(e.FullPath);
         }
 
         private void RetryCallback(object state)

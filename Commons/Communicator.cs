@@ -10,8 +10,8 @@ namespace Commons
         private static readonly string ConnectingPrompt = "Connecting to {0} on port {1}";
         private static readonly string FailedConnectionPrompt = "Couldn`t connect and send message to {0}";
         private static readonly string SuccessfulConnectionPrompt = "Connection to {0} successfully. Sending data";
-        private static readonly string MessageSuccessfulySentPrompt = "Message succesfully sent to {0}";
-        private static readonly string MessageUnsuccessfulySentPrompt = "Message unsuccesfully sent to {0}";
+        private static readonly string MessageSuccessfulySentPrompt = "Message successfully sent to {0}";
+        private static readonly string MessageUnsuccessfulySentPrompt = "Message unsuccessfully sent to {0}";
         private static readonly string IncompleteMessageReceivedPrompt = "Incomplete message received from {0}";
         private static readonly string MessageReceivedPrompt = "Message received from {0}";
 
